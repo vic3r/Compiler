@@ -17,6 +17,7 @@ var (
 	tokenID         = 0
 	lineNumber      = 0
 	characterNumber = 0
+	reader          *bufio.Reader
 	dictionary      = make(map[string]*u.Token)
 )
 
@@ -32,31 +33,60 @@ func generateTokens() error {
 	return nil
 }
 
-func analyzeChar(c *rune, builder *strings.Builder) {
+func checkReservedWord(currentWord string) bool {
+	if currentWord == "si" {
+		return true
+	}
+	return false
+}
+
+func insertInTokenMap(token *u.Token) {
+	var tokenType string
+	if _, v := w.Set[token.Value]; v {
+		tokenType = u.ReservedWord
+	} else {
+		tokenType = u.ID
+	}
+	if _, exists := dictionary[token.Value]; !exists {
+		dictionary[token.Value] = &u.Token{
+			Type:       tokenType,
+			Value:      token.Value,
+			LineNumber: lineNumber,
+			Character:  characterNumber,
+		}
+	}
+}
+
+func analyzeChar(c *rune, builder *strings.Builder) error {
 	actualChar := string(*c)
 	if actualChar != "\n" && actualChar != "\t" && actualChar != " " {
 		builder.WriteString(fmt.Sprintf("%s", actualChar))
 	} else {
-		tokenID++
+		// tokenID++
 		// Add token
-		token := &u.Token{Value: builder.String(), LineNumber: lineNumber}
-		if _, v := w.Set[token.Value]; v {
-			dictionary[token.Value] = &u.Token{
-				Type:       u.ReservedWord,
-				Value:      token.Value,
-				LineNumber: lineNumber,
-				Character:  characterNumber,
+
+		if checkReservedWord(builder.String()) {
+			token := &u.Token{Value: builder.String(), LineNumber: lineNumber, Character: characterNumber}
+
+			insertInTokenMap(token)
+			if c, _, _ := reader.ReadRune(); c != '(' {
+				return fmt.Errorf(fmt.Sprintf("Invalid Si: %d %d ", lineNumber, characterNumber))
 			}
-		} else {
-			if _, exists := dictionary[token.Value]; !exists {
-				dictionary[token.Value] = &u.Token{
-					Type:       u.ID,
-					Value:      token.Value,
-					LineNumber: lineNumber,
-					Character:  characterNumber,
+			characterNumber++
+			for {
+				if c, _, _ := reader.ReadRune(); c != ')' {
+					if c == ' ' || c == '\n' || c == '\t' || u.SpecialChars[string(c)] {
+						return fmt.Errorf(fmt.Sprintf("Invalid Si Parameters: %d %d ", lineNumber, characterNumber))
+					}
+					characterNumber++
 				}
 			}
 		}
+
+		token := &u.Token{Value: builder.String(), LineNumber: lineNumber, Character: characterNumber}
+
+		insertInTokenMap(token)
+
 		characterNumber++
 		if actualChar == "\n" {
 			lineNumber++
@@ -64,6 +94,7 @@ func analyzeChar(c *rune, builder *strings.Builder) {
 		}
 		builder.Reset()
 	}
+	return nil
 }
 
 func main() {
@@ -71,20 +102,22 @@ func main() {
 
 	text := string(file[:])
 
-	r := bufio.NewReader(strings.NewReader(text))
+	reader = bufio.NewReader(strings.NewReader(text))
 	var builder strings.Builder
 	for {
-		if c, _, err := r.ReadRune(); err != nil {
+		if c, _, err := reader.ReadRune(); err != nil {
 			if err == io.EOF {
 				break
 			} else {
 				log.Fatal(err)
 			}
 		} else {
-			analyzeChar(&c, &builder)
+			if err := analyzeChar(&c, &builder); err != nil {
+				fmt.Println("There was an error in the lexical Analysis")
+			}
 		}
 	}
 	if err := generateTokens(); err != nil {
-		fmt.Printf("The map is not accessible %v", err)
+		fmt.Printf("Tokens can not be generated %v", err)
 	}
 }
