@@ -30,3 +30,35 @@ const (
 	Or  = "|"
 	And = "&"
 )
+
+// SpecialChars for detecting special chars
+var SpecialChars = map[string]bool{
+	"!":  true,
+	"#":  true,
+	"$":  true,
+	"%":  true,
+	"&":  true,
+	"*":  true,
+	"+":  true,
+	",":  true,
+	"-":  true,
+	".":  true,
+	"/":  true,
+	":":  true,
+	";":  true,
+	"<":  true,
+	"=":  true,
+	">":  true,
+	"?":  true,
+	"@":  true,
+	"[":  true,
+	"\\": true,
+	"]":  true,
+	"^":  true,
+	"_":  true,
+	"`":  true,
+	"{":  true,
+	"|":  true,
+	"}":  true,
+	"~":  true,
+}
