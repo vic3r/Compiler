@@ -38,5 +38,5 @@ principal() {
 	logico e2;
 	entero e2;
 	
-	resultado = fun()1 + fun2();
+	resultado = fun1() + fun2();
 }

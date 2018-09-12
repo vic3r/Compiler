@@ -13,6 +13,9 @@ const (
 	ID               = "Identificador"
 	LeftParenthesis  = "("
 	RightParenthesis = ")"
+	LeftBracket      = "{"
+	RightBracket     = "}"
+	DotComma         = ";"
 
 	// Arithmetic Operators
 	Addition      = "+"
