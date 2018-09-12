@@ -38,19 +38,14 @@ func generateSymbolTable() error {
 	data := make([]byte, 0)
 	data = append(data, []byte(fmt.Sprintf("ID  |  value  |  line number  |  character number\n"))...)
 	for _, v := range dictionary {
-		data = append(data, []byte(fmt.Sprintf("%s  |  %s  |  %d  |  %d\n", v.Type, v.Value, v.LineNumber, v.Character))...)
+		if v.Type == u.ID {
+			data = append(data, []byte(fmt.Sprintf("%s  |  %s  |  %d  |  %d\n", v.Type, v.Value, v.LineNumber, v.Character))...)
+		}
 	}
 	if err := ioutil.WriteFile("symbols.txt", data, os.ModePerm); err != nil {
 		return err
 	}
 	return nil
-}
-
-func checkReservedWord(currentWord string) bool {
-	if currentWord == "si" {
-		return true
-	}
-	return false
 }
 
 func insertIntoSymbolsMap(token *u.Token) {
@@ -84,41 +79,43 @@ func insertIntoTokenMap(token *u.Token) {
 func analyzeChar(c *rune, builder *strings.Builder) error {
 	actualChar := string(*c)
 	if actualChar != "\n" && actualChar != "\t" && actualChar != " " {
-		builder.WriteString(fmt.Sprintf("%s", actualChar))
-	} else {
-		// tokenID++
-		// Add token
-		//fmt.Printf("Testing %s\n", builder.String())
-		if checkReservedWord(builder.String()) {
-			token := &u.Token{Value: builder.String(), LineNumber: lineNumber, Character: characterNumber}
+		if actualChar != u.DotComma && actualChar != u.LeftParenthesis && actualChar != u.RightParenthesis && actualChar != u.LeftBracket && actualChar != u.RightBracket && actualChar != "!" {
+			builder.WriteString(fmt.Sprintf("%s", actualChar))
+		} else {
+			if builder.String() != " " {
+				token := &u.Token{Value: builder.String(), LineNumber: lineNumber, Character: characterNumber}
+				insertIntoTokenMap(token)
+				insertIntoSymbolsMap(token)
+				builder.Reset()
+			}
+
+			token := &u.Token{Value: actualChar, LineNumber: lineNumber, Character: characterNumber}
 			insertIntoTokenMap(token)
 			insertIntoSymbolsMap(token)
-			if c, _, _ := reader.ReadRune(); c != '(' {
-				return fmt.Errorf(fmt.Sprintf("Invalid Si: %d %d ", lineNumber, characterNumber))
-			}
 			characterNumber++
-			for {
-				if c, _, _ := reader.ReadRune(); c != ')' {
-					if c == ' ' || c == '\n' || c == '\t' || u.SpecialChars[string(c)] {
-						return fmt.Errorf(fmt.Sprintf("Invalid Si Parameters: %d %d ", lineNumber, characterNumber))
-					}
-					characterNumber++
-				}
-			}
 		}
-
-		token := &u.Token{Value: builder.String(), LineNumber: lineNumber, Character: characterNumber}
-		tokens = append(tokens, token)
-		insertIntoTokenMap(token)
-		insertIntoSymbolsMap(token)
-		characterNumber++
+		// if w.SetConditional[strings.ToLower(builder.String())] {
+		// 	token := &u.Token{Value: builder.String(), LineNumber: lineNumber, Character: characterNumber}
+		// 	insertIntoTokenMap(token)
+		// 	insertIntoSymbolsMap(token)
+		// 	builder.Reset()
+		// 	characterNumber++
+		// }
+	} else {
 
 		if actualChar == "\n" {
 			lineNumber++
 			characterNumber = 0
 		}
+		if builder.String() != " " {
+			token := &u.Token{Value: builder.String(), LineNumber: lineNumber, Character: characterNumber}
+			insertIntoTokenMap(token)
+			insertIntoSymbolsMap(token)
+		}
+
 		builder.Reset()
 	}
+	characterNumber++
 	return nil
 }
 

@@ -15,6 +15,7 @@ const (
 	RightParenthesis = ")"
 	LeftBracket      = "{"
 	RightBracket     = "}"
+	DotComma         = ";"
 
 	// Arithmetic Operators
 	Addition      = "+"
