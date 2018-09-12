@@ -94,13 +94,6 @@ func analyzeChar(c *rune, builder *strings.Builder) error {
 			insertIntoSymbolsMap(token)
 			characterNumber++
 		}
-		// if w.SetConditional[strings.ToLower(builder.String())] {
-		// 	token := &u.Token{Value: builder.String(), LineNumber: lineNumber, Character: characterNumber}
-		// 	insertIntoTokenMap(token)
-		// 	insertIntoSymbolsMap(token)
-		// 	builder.Reset()
-		// 	characterNumber++
-		// }
 	} else {
 
 		if actualChar == "\n" {
