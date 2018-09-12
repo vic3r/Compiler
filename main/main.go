@@ -22,11 +22,12 @@ var (
 	dictionary      = make(map[string]*u.Token)
 	tokens          = make([]*u.Token, 0)
 	errors          = make([]*e.LexicalError, 0)
+	prevChar        = ""
 )
 
 func generateErrors() error {
 	data := make([]byte, 0)
-	data = append(data, []byte(fmt.Sprintf("ID				|  value  |  line number  |  character number\n"))...)
+	data = append(data, []byte(fmt.Sprintf("ID						|  value  |  line number  |  character number\n"))...)
 	for _, v := range errors {
 		data = append(data, []byte(fmt.Sprintf("%s  |  %s  |  %d  |  %d\n", v.Type, v.Value, v.NumberLine, v.NumberCharacter))...)
 	}
@@ -38,7 +39,7 @@ func generateErrors() error {
 
 func generateTokenTable() error {
 	data := make([]byte, 0)
-	data = append(data, []byte(fmt.Sprintf("ID				|  value  |  line number  |  character number\n"))...)
+	data = append(data, []byte(fmt.Sprintf("ID						|  value  |  line number  |  character number\n"))...)
 	for _, v := range tokens {
 		data = append(data, []byte(fmt.Sprintf("%s  |  %s  |  %d  |  %d\n", v.Type, v.Value, v.LineNumber, v.Character))...)
 	}
@@ -50,7 +51,7 @@ func generateTokenTable() error {
 
 func generateSymbolTable() error {
 	data := make([]byte, 0)
-	data = append(data, []byte(fmt.Sprintf("ID				|  value  |  line number  |  character number\n"))...)
+	data = append(data, []byte(fmt.Sprintf("ID						|  value  |  line number  |  character number\n"))...)
 	for _, v := range dictionary {
 		if v.Type == u.ID {
 			data = append(data, []byte(fmt.Sprintf("%s  |  %s  |  %d  |  %d\n", v.Type, v.Value, v.LineNumber, v.Character))...)
@@ -66,7 +67,7 @@ func insertIntoSymbolsMap(token *u.Token) {
 	var tokenType string
 	switch {
 	case w.Set[token.Value]:
-		tokenType = u.ReservedWord
+		tokenType = token.Value
 		break
 	case w.SetArithmetic[token.Value]:
 		tokenType = "Operador Aritmetico"
@@ -113,7 +114,7 @@ func insertIntoTokenMap(token *u.Token) {
 	var tokenType string
 	switch {
 	case w.Set[token.Value]:
-		tokenType = u.ReservedWord
+		tokenType = token.Value
 		break
 	case w.SetArithmetic[token.Value]:
 		tokenType = "Operador Aritmetico"
@@ -154,15 +155,31 @@ func insertIntoTokenMap(token *u.Token) {
 func analyzeChar(c *rune, builder *strings.Builder) error {
 	actualChar := string(*c)
 	if actualChar != "\n" && actualChar != "\t" && actualChar != " " {
-
+		if prevChar == u.DotComma && actualChar != "\n" {
+			token := &u.Token{
+				Value:      actualChar,
+				LineNumber: lineNumber,
+				Character:  characterNumber,
+			}
+			addTypeError(token)
+			lexErr := &e.LexicalError{
+				Type:            token.Type,
+				Value:           token.Value,
+				NumberLine:      token.LineNumber,
+				NumberCharacter: token.Character,
+			}
+			errors = append(errors, lexErr)
+		}
 		if actualChar != u.DotComma && actualChar != u.LeftParenthesis && actualChar != u.RightParenthesis &&
 			actualChar != u.LeftBracket && actualChar != u.RightBracket && actualChar != "!" &&
 			actualChar != "," && actualChar != "\\" && actualChar != "&" && actualChar != "<" &&
 			actualChar != ">" && actualChar != "/" && actualChar != "*" && actualChar != "-" && actualChar != "+" && actualChar != "^" {
 			builder.WriteString(fmt.Sprintf("%s", actualChar))
-
 		} else {
-			if builder.String() != " " {
+			if actualChar == u.DotComma {
+				prevChar = actualChar
+			}
+			if builder.String() != "" {
 				token := &u.Token{Value: builder.String(), LineNumber: lineNumber, Character: characterNumber}
 
 				if lexErr := validateToken(token); lexErr != nil {
@@ -185,7 +202,7 @@ func analyzeChar(c *rune, builder *strings.Builder) error {
 			lineNumber++
 			characterNumber = 0
 		}
-		if builder.String() != " " {
+		if builder.String() != "" {
 			token := &u.Token{Value: builder.String(), LineNumber: lineNumber, Character: characterNumber}
 			if lexErr := validateToken(token); lexErr != nil {
 				errors = append(errors, lexErr)
@@ -197,8 +214,21 @@ func analyzeChar(c *rune, builder *strings.Builder) error {
 
 		builder.Reset()
 	}
+	prevChar = ""
 	characterNumber++
 	return nil
+}
+
+func generateFiles() {
+	if err := generateTokenTable(); err != nil {
+		fmt.Printf("Tokens can not be generated %v", err)
+	}
+	if err := generateSymbolTable(); err != nil {
+		fmt.Printf("Symbols can not be generated %v", err)
+	}
+	if err := generateErrors(); err != nil {
+		fmt.Printf("Errors can not be generated %v", err)
+	}
 }
 
 func main() {
@@ -221,13 +251,6 @@ func main() {
 			}
 		}
 	}
-	if err := generateTokenTable(); err != nil {
-		fmt.Printf("Tokens can not be generated %v", err)
-	}
-	if err := generateSymbolTable(); err != nil {
-		fmt.Printf("Symbols can not be generated %v", err)
-	}
-	if err := generateErrors(); err != nil {
-		fmt.Printf("Errors can not be generated %v", err)
-	}
+	generateFiles()
+
 }
