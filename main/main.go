@@ -19,15 +19,28 @@ var (
 	characterNumber = 0
 	reader          *bufio.Reader
 	dictionary      = make(map[string]*u.Token)
+	tokens          = make([]*u.Token, 0)
 )
 
-func generateTokens() error {
+func generateTokenTable() error {
+	data := make([]byte, 0)
+	data = append(data, []byte(fmt.Sprintf("ID  |  value  |  line number  |  character number\n"))...)
+	for _, v := range tokens {
+		data = append(data, []byte(fmt.Sprintf("%s  |  %s  |  %d  |  %d\n", v.Type, v.Value, v.LineNumber, v.Character))...)
+	}
+	if err := ioutil.WriteFile("tokens.txt", data, os.ModePerm); err != nil {
+		return err
+	}
+	return nil
+}
+
+func generateSymbolTable() error {
 	data := make([]byte, 0)
 	data = append(data, []byte(fmt.Sprintf("ID  |  value  |  line number  |  character number\n"))...)
 	for _, v := range dictionary {
 		data = append(data, []byte(fmt.Sprintf("%s  |  %s  |  %d  |  %d\n", v.Type, v.Value, v.LineNumber, v.Character))...)
 	}
-	if err := ioutil.WriteFile("tokens.txt", data, os.ModePerm); err != nil {
+	if err := ioutil.WriteFile("symbols.txt", data, os.ModePerm); err != nil {
 		return err
 	}
 	return nil
@@ -40,7 +53,7 @@ func checkReservedWord(currentWord string) bool {
 	return false
 }
 
-func insertInTokenMap(token *u.Token) {
+func insertIntoSymbolsMap(token *u.Token) {
 	var tokenType string
 	if _, v := w.Set[token.Value]; v {
 		tokenType = u.ReservedWord
@@ -57,6 +70,17 @@ func insertInTokenMap(token *u.Token) {
 	}
 }
 
+func insertIntoTokenMap(token *u.Token) {
+	var tokenType string
+	if _, v := w.Set[token.Value]; v {
+		tokenType = u.ReservedWord
+	} else {
+		tokenType = u.ID
+	}
+	token.Type = tokenType
+	tokens = append(tokens, token)
+}
+
 func analyzeChar(c *rune, builder *strings.Builder) error {
 	actualChar := string(*c)
 	if actualChar != "\n" && actualChar != "\t" && actualChar != " " {
@@ -64,11 +88,11 @@ func analyzeChar(c *rune, builder *strings.Builder) error {
 	} else {
 		// tokenID++
 		// Add token
-
+		//fmt.Printf("Testing %s\n", builder.String())
 		if checkReservedWord(builder.String()) {
 			token := &u.Token{Value: builder.String(), LineNumber: lineNumber, Character: characterNumber}
-
-			insertInTokenMap(token)
+			insertIntoTokenMap(token)
+			insertIntoSymbolsMap(token)
 			if c, _, _ := reader.ReadRune(); c != '(' {
 				return fmt.Errorf(fmt.Sprintf("Invalid Si: %d %d ", lineNumber, characterNumber))
 			}
@@ -84,10 +108,11 @@ func analyzeChar(c *rune, builder *strings.Builder) error {
 		}
 
 		token := &u.Token{Value: builder.String(), LineNumber: lineNumber, Character: characterNumber}
-
-		insertInTokenMap(token)
-
+		tokens = append(tokens, token)
+		insertIntoTokenMap(token)
+		insertIntoSymbolsMap(token)
 		characterNumber++
+
 		if actualChar == "\n" {
 			lineNumber++
 			characterNumber = 0
@@ -117,7 +142,10 @@ func main() {
 			}
 		}
 	}
-	if err := generateTokens(); err != nil {
+	if err := generateTokenTable(); err != nil {
 		fmt.Printf("Tokens can not be generated %v", err)
+	}
+	if err := generateSymbolTable(); err != nil {
+		fmt.Printf("Symbols can not be generated %v", err)
 	}
 }
