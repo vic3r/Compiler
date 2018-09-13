@@ -60,6 +60,10 @@ func validateToken(token *u.Token) *e.LexicalError {
 		if frx.MatchString(token.Value) {
 			return nil
 		}
+		if token.Value == "===" {
+			token.Value = "=="
+			return nil
+		}
 		for k := range u.SpecialChars {
 			if strings.Contains(token.Value, k) {
 				index := strings.Index(token.Value, k) - token.Character
