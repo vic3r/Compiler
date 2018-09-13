@@ -23,6 +23,7 @@ var (
 	tokens          = make([]*u.Token, 0)
 	errors          = make([]*e.LexicalError, 0)
 	prevChar        = ""
+	functions       = make(map[string]*u.Token)
 )
 
 func generateErrors() error {
@@ -174,10 +175,23 @@ func analyzeChar(c *rune, builder *strings.Builder) error {
 			actualChar != u.LeftBracket && actualChar != u.RightBracket && actualChar != "!" &&
 			actualChar != "," && actualChar != "\\" && actualChar != "&" && actualChar != "<" &&
 			actualChar != ">" && actualChar != "/" && actualChar != "*" && actualChar != "-" && actualChar != "+" && actualChar != "^" {
+
 			builder.WriteString(fmt.Sprintf("%s", actualChar))
+
 		} else {
 			if actualChar == u.DotComma {
 				prevChar = actualChar
+			}
+			if actualChar == u.LeftParenthesis {
+				tokFunc := &u.Token{
+					Type:       "Function",
+					Value:      builder.String(),
+					LineNumber: lineNumber,
+					Character:  characterNumber,
+				}
+				if _, v := functions[builder.String()]; !v {
+					functions[builder.String()] = tokFunc
+				}
 			}
 			if builder.String() != "" {
 				token := &u.Token{Value: builder.String(), LineNumber: lineNumber, Character: characterNumber}
@@ -203,12 +217,32 @@ func analyzeChar(c *rune, builder *strings.Builder) error {
 			characterNumber = 0
 		}
 		if builder.String() != "" {
-			token := &u.Token{Value: builder.String(), LineNumber: lineNumber, Character: characterNumber}
-			if lexErr := validateToken(token); lexErr != nil {
-				errors = append(errors, lexErr)
-			} else {
+			if builder.String() == "===" {
+				token := &u.Token{Value: "==", LineNumber: lineNumber, Character: characterNumber}
 				insertIntoTokenMap(token)
 				insertIntoSymbolsMap(token)
+				characterNumber++
+				token = &u.Token{Value: "=", LineNumber: lineNumber, Character: characterNumber}
+				insertIntoTokenMap(token)
+				insertIntoSymbolsMap(token)
+			} else {
+				if builder.String() == "====" {
+					token := &u.Token{Value: "==", LineNumber: lineNumber, Character: characterNumber}
+					insertIntoTokenMap(token)
+					insertIntoSymbolsMap(token)
+					characterNumber += 2
+					token = &u.Token{Value: "==", LineNumber: lineNumber, Character: characterNumber}
+					insertIntoTokenMap(token)
+					insertIntoSymbolsMap(token)
+				} else {
+					token := &u.Token{Value: builder.String(), LineNumber: lineNumber, Character: characterNumber}
+					if lexErr := validateToken(token); lexErr != nil {
+						errors = append(errors, lexErr)
+					} else {
+						insertIntoTokenMap(token)
+						insertIntoSymbolsMap(token)
+					}
+				}
 			}
 		}
 
@@ -219,16 +253,17 @@ func analyzeChar(c *rune, builder *strings.Builder) error {
 	return nil
 }
 
-func generateFiles() {
+func generateFiles() error {
 	if err := generateTokenTable(); err != nil {
-		fmt.Printf("Tokens can not be generated %v", err)
+		return fmt.Errorf("Tokens can not be generated %v", err)
 	}
 	if err := generateSymbolTable(); err != nil {
-		fmt.Printf("Symbols can not be generated %v", err)
+		return fmt.Errorf("Symbols can not be generated %v", err)
 	}
 	if err := generateErrors(); err != nil {
-		fmt.Printf("Errors can not be generated %v", err)
+		return fmt.Errorf("Errors can not be generated %v", err)
 	}
+	return nil
 }
 
 func main() {
@@ -251,6 +286,19 @@ func main() {
 			}
 		}
 	}
-	generateFiles()
+	if err := generateFiles(); err != nil {
+		fmt.Println("Can not create tables for lexical Analysis")
+		return
+	}
+	// if flag := synAnalysis(); flag {
+	// 	fmt.Println("Can not do the syntactical analysis")
+	// }
+
+	if flag := synAnalysis(); flag {
+		//fmt.Println("Can not do the syntactical analysis")
+	}
+	if err := generateSymbolSyntacticTable(); err != nil {
+		fmt.Println("Can not generate syn table")
+	}
 
 }
