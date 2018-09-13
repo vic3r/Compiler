@@ -66,7 +66,13 @@ func validateToken(token *u.Token) *e.LexicalError {
 		}
 		for k := range u.SpecialChars {
 			if strings.Contains(token.Value, k) {
-				index := strings.Index(token.Value, k) - token.Character
+				index := 0
+				if strings.Index(token.Value, k) > token.Character {
+					index = strings.Index(token.Value, k) - token.Character
+				} else {
+					index = token.Character - strings.Index(token.Value, k)
+				}
+
 				return &e.LexicalError{
 					Value:           token.Value,
 					Type:            token.Type,
