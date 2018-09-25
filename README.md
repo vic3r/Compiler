@@ -12,7 +12,7 @@ Download Go and install all the required dependeciens which are needed (in some 
 
 - The binary can be downloaded from: https://golang.org/dl/
 
-- Configure properly your `GOPATH` and `GOROOT` properly
+- Configure properly your `GOPATH` and `GOROOT`
 
 
 ### Installing
